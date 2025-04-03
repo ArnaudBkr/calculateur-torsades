@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="manifest.json">
+    <script>
+        if ("serviceWorker" in navigator) {
+            navigator.serviceWorker.register("service-worker.js").then(() => {
+                console.log("Service Worker enregistré !");
+            });
+        }
+    </script>
+    
+    <title>Calculateur de Torsades / Twist Calculator</title>
+    <style>
+        /* Définition du fond d'écran */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-image: url('./IMG/backgroundImage.jpg');
+            background-size: cover;
+            background-position: center;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        /* Conteneur principal centré */
+        .container {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+            width: 50%;
+            text-align: center;
+        }
+
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .orange-text {
+            color: rgb(255, 145, 0);
+            font-weight: bold;
+        }
+
+        .red-text {
+            color: red;
+            font-weight: bold;
+        }
+
+        .green-text {
+            color: green;
+            font-weight: bold;
+        }
+
+        .note {
+            color: red;
+            font-weight: bold;
+        }
+
+        input, select, button {
+            margin: 10px 0;
+            padding: 10px;
+            width: 80%;
+            font-size: 16px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+
+        button {
+            background-color: #2c3e50;
+            color: white;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #34495e;
+        }
+
+        /* Conteneur d'image centré sous le texte */
+        .img-container {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        img {
+            max-width: 80%;
+            height: auto;
+            border-radius: 5px;
+        }
+
+        /* Auteur en bas à droite */
+        .footer {
+            position: fixed;
+            bottom: 10px;
+            right: 20px;
+            font-size: 14px;
+            color: #888;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Calculateur de Torsades / Twist Calculator</h1>
+
+        <label for="unit">Sélectionner l'unité (mm ou inch) / Select the unit (mm or inch):</label>
+        <select id="unit" onchange="updateDiameterOptions()">
+            <option value="mm">mm</option>
+            <option value="inch">inch</option>
+        </select>
+
+        <br><br>
+
+        <!-- Sélection du diamètre du fil (s'adapte à l'unité choisie) -->
+        <label for="wire-diameter">Sélectionner la gamme de diamètre du fil :</label>
+        <br>
+        <label for="wire-diameter">Select the wire diameter range :</label>
+        <select id="wire-diameter">
+            <option value="small">Jusqu'à 0,8mm inclus / Up to 0.8mm included (0,8mm=0.0315")</option>
+            <option value="large">Supérieur à 0,8mm / Greater than 0.8mm (0,8mm=0.0315")</option>
+        </select>
+
+        <br><br>
+
+        <label for="distance" class="orange-text">Distance entre les trous (en mm ou inch) se référer à la figure.</label>
+        <br>
+        <label for="distance" class="orange-text">Distance between holes (in mm or inch) refer to the figure:</label>
+        <input type="number" id="distance" placeholder="Entrez la distance / Enter the distance" required>
+
+        <br><br>
+
+        <button type="button" onclick="calculateTwists()">Calculer / Calculate</button><br><br>
+
+        <div id="result" class="green-text"></div>
+        <div id="note" class="note"></div>
+
+        <!-- Conteneur d'image -->
+        <div class="img-container">
+            <img src="./IMG/Locking_wire_distance.jpg" alt="Locking_wire_distance">
+            <p><i>Source :  
+                <a href="./PCS/PCS-7610_iss05_EN.pdf">PCS-7610_iss05_EN</a>  
+                &  
+                <a href="./PCS/NCT60-300-04_Rev10.pdf">NCT-300-04_Rev10</a>
+            </i></p>
+        </div>
+        
+    </div>
+
+    <script>
+        function updateDiameterOptions() {
+            const unit = document.getElementById("unit").value;
+            const wireDiameter = document.getElementById("wire-diameter");
+
+            wireDiameter.innerHTML = ""; // Réinitialise les options
+
+            if (unit === "mm") {
+                wireDiameter.innerHTML += `
+                    <option value="small">Jusqu'à 0,8mm inclus / Up to 0.8mm included (0,8mm=0.0315")</option>
+                    <option value="large">Supérieur à 0,8mm / Greater than 0.8mm (0,8mm=0.0315")</option>
+                `;
+            } else {
+                wireDiameter.innerHTML += `
+                    <option value="small">Jusqu'à 0.0315" inclus / Up to 0.0315" included (0,8mm=0.0315")</option>
+                    <option value="large">Supérieur à 0.0315" / Greater than 0.0315" (0,8mm=0.0315")</option>
+                `;
+            }
+        }
+
+        function calculateTwists() {
+            const unit = document.getElementById('unit').value;
+            const wireDiameter = document.getElementById('wire-diameter').value;
+            const distance = parseFloat(document.getElementById('distance').value);
+
+            if (isNaN(distance) || distance <= 0) {
+                alert("Veuillez entrer une distance valide. / Please enter a valid distance.");
+                return;
+            }
+
+            let twistMin, twistMax;
+
+            if (wireDiameter === "small") {
+                twistMin = 9;
+                twistMax = 12;
+            } else {
+                twistMin = 6;
+                twistMax = 9;
+            }
+
+            if (unit === 'mm') {
+                twistMin = Math.round((distance / 25) * twistMin);
+                twistMax = Math.round((distance / 25) * twistMax);
+            } else {
+                twistMin = Math.round(distance * twistMin);
+                twistMax = Math.round(distance * twistMax);
+            }
+
+            document.getElementById('result').innerHTML = `
+                <span class="green-text">
+                    Nombre de torsades nécessaires : entre ${twistMin} et ${twistMax} <br>
+                    Number of twists required: between ${twistMin} and ${twistMax} <br><br>
+                </span>
+            `;
+
+            document.getElementById('note').innerHTML = `
+                <span class="red-text">
+                    Remarque : Veuillez vous référer à la procédure PCS-7610 dernière version pour les longueurs de câble supplémentaires à prévoir. <br>
+                    Note: Please refer to the procedure PCS-7610 latest issue</a> for the additional wire length requirements.
+                </span>
+            `;
+        }
+    </script>
+
+    <div class="footer">
+        Auteur / Author : Arnaud BUCKENMEYER
+    </div>
+
+</body>
+</html>
